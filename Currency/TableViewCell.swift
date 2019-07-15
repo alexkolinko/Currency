@@ -9,22 +9,19 @@
 import UIKit
 
 class TableViewCell: UITableViewCell {
-
-    @IBOutlet weak var currency: UILabel!
-    @IBOutlet weak var sale: UILabel!
-    @IBOutlet weak var buy: UILabel!
     
-   
+    @IBOutlet weak var currency: UILabel!
+    @IBOutlet weak var buy: UILabel!
+    @IBOutlet weak var sale: UILabel!
     
     override func awakeFromNib() {
         super.awakeFromNib()
-        // Initialization code
+        
     }
-
+    
     override func setSelected(_ selected: Bool, animated: Bool) {
         super.setSelected(selected, animated: animated)
-
-        // Configure the view for the selected state
+        
     }
     
 }

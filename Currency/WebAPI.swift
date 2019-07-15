@@ -9,11 +9,14 @@
 import Foundation
 import Alamofire
 
+
 class WebAPI {
+    
+    let queue = DispatchQueue(label: "My queue", qos: .background, attributes: .concurrent)
     
     func getAPI(url: String, completed:@escaping (_ currencys: CurrencyListResponse)->Void){
         guard let testUrl = URL(string: url) else {return}
-        AF.request(testUrl).validate().responseData { (response) in
+        AF.request(testUrl).validate().responseData(queue: self.queue) { (response) in
             switch response.result {
             case .success(_):
                 guard let data = response.data else {return}

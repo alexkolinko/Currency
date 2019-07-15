@@ -8,54 +8,50 @@
 
 import UIKit
 
-class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+
+class ViewController: UIViewController {
     
-    let date = "01.12.2014"
-    let url = "https://api.privatbank.ua/p24api/exchange_rates?json&date="
-    let api = WebAPI()
     var arrList = [CurrencyListResponse]()
     var arrCurrencyPB = [CurrencysAll]()
     var arrCurrencyNB = [CurrencysAll]()
-    let  cellIdentifire = "Cell"
+    var dateToday = String(Date.getCurrentDate())
+    let api = WebAPI()
+    let url = "https://api.privatbank.ua/p24api/exchange_rates?json&date="
+    let cellIdentifire = "Cell"
+    let formater = DateFormatter()
+    let datePicker = UIDatePicker(frame: CGRect(x: 60, y: 50, width: 270, height: 100))
+    let queueMain = DispatchQueue.main
     
-    var numberOfPB = 0
-    var numberOfNB = 0
-    
-    @IBOutlet weak var dateB: UILabel!
-    @IBOutlet weak var table1: UITableView!
-    @IBOutlet weak var table2: UITableView!
+    @IBOutlet weak var datePB: UILabel!
+    @IBOutlet weak var dateNB: UILabel!
+    @IBOutlet weak var tablePB: UITableView!
+    @IBOutlet weak var tableNB: UITableView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        table1.delegate = self
-        table2.delegate = self
-        table1.dataSource = self
-        table2.dataSource = self
-        table1.register(UINib(nibName: "TableViewCell", bundle: nil), forCellReuseIdentifier: cellIdentifire)
-        table2.register(UINib(nibName: "TableViewCell", bundle: nil), forCellReuseIdentifier: cellIdentifire)
-        
-        self.api.getAPI(url: url + date) { (Currency) in
-            self.arrList = [Currency]
-            self.arrCurrencyNB = Currency.exchangeRate
-            self.arrCurrencyPB = Currency.exchangeRate.filter({ item -> Bool in
-                item.saleRate != nil && item.purchaseRate != nil
-            })
-            self.dateB.text = self.arrList[0].date
-            self.table1.reloadData()
-            self.table2.reloadData()
-        }
+        getAPPI()
+        tablePB.delegate = self
+        tableNB.delegate = self
+        tablePB.dataSource = self
+        tableNB.dataSource = self
+        tablePB.register(UINib(nibName: "TableViewCell", bundle: nil), forCellReuseIdentifier: cellIdentifire)
+        tableNB.register(UINib(nibName: "TableViewCell", bundle: nil), forCellReuseIdentifier: cellIdentifire)
     }
     
+    @IBAction func dateButtonPB(_ sender: UIButton) {
+        dateAlert()
+    }
+}
+
+
+extension ViewController: UITableViewDelegate, UITableViewDataSource {
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        
         if tableView.tag == 1 {
-            numberOfPB = arrCurrencyNB.count
-            return numberOfPB
+            return arrCurrencyPB.count
         }
         else if tableView.tag == 2 {
-            numberOfNB = arrCurrencyNB.count
-            return numberOfNB
+            return arrCurrencyNB.count
         }
         else {
             return 0
@@ -64,34 +60,88 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: cellIdentifire, for: indexPath) as! TableViewCell
-        if tableView.tag == 1 {
-            let arrPB = arrCurrencyPB[indexPath.row]
-            let currency = arrPB.currency
-            let buy = arrPB.purchaseRate
-            let sale = arrPB.saleRate
-            cell.currency.text = currency
-            cell.buy.text = formatString(anotherType: buy!)
-            cell.sale.text = formatString(anotherType: sale!)
-        }
-        else if (tableView.tag == 2) {
-            let arrNB = arrCurrencyNB[indexPath.row]
-            let currency = arrNB.currency
-            let buy = arrNB.purchaseRateNB
-            let sale = arrNB.saleRateNB
-            cell.currency.text = currency
-            cell.buy.text = formatString(anotherType: buy)
-            cell.sale.text = formatString(anotherType: sale)
+        self.queueMain.async {
+            if tableView.tag == 1 {
+                let arrPB = self.arrCurrencyPB[indexPath.row]
+                guard let currency = arrPB.currency, arrPB.currency != nil else {return}
+                guard let buy = arrPB.purchaseRate, arrPB.purchaseRate != nil else {return}
+                guard let sale = arrPB.saleRate, arrPB.saleRate != nil else {return}
+                cell.currency.text = currency
+                cell.buy.text = self.formatToString(anotherType: buy)
+                cell.sale.text = self.formatToString(anotherType: sale)
+            }
+            else if tableView.tag == 2 {
+                let arrNB = self.arrCurrencyNB[indexPath.row]
+                guard let currency = arrNB.currency, arrNB.currency != nil else {return}
+                guard let buy = arrNB.purchaseRateNB, arrNB.purchaseRateNB != nil else {return}
+                guard let sale = arrNB.saleRateNB, arrNB.saleRateNB != nil else {return}
+                cell.currency.text = currency
+                cell.buy.text = self.formatToString(anotherType: buy)
+                cell.sale.text = self.formatToString(anotherType: sale)
+            }
         }
         return cell
     }
     
-    func formatString(anotherType: Double) -> String {
-        let string = String(format: "%.2f", anotherType)
-        return string
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        if tableView.tag == 1 {
+            let cellPB = tableView.cellForRow(at: indexPath) as! TableViewCell
+            let currencyPB = cellPB.currency.text
+            guard let index = arrCurrencyNB.firstIndex(where: {$0.currency == currencyPB!}) else {return}
+            let indexPath = NSIndexPath(item: index, section: 0)
+            tableNB.selectRow(at: indexPath as IndexPath, animated: false, scrollPosition: UITableView.ScrollPosition.middle)
+        } else if tableView.tag == 2 {
+            let cellNB = tableView.cellForRow(at: indexPath) as! TableViewCell
+            let currencyNB = cellNB.currency.text
+            guard let index1 = arrCurrencyPB.firstIndex(where: {$0.currency == currencyNB!}) else {return}
+            print(index1)
+            let indexPath = NSIndexPath(item: index1, section: 0)
+            tablePB.selectRow(at: indexPath as IndexPath, animated: false, scrollPosition: UITableView.ScrollPosition.middle)
+        }
     }
     
+    func getAPPI() {
+        self.api.getAPI(url: self.url + self.dateToday) { (Currency) in
+            self.arrList = [Currency]
+            self.arrCurrencyNB = Currency.exchangeRate.filter({ item -> Bool in
+                item.baseCurrency != nil && item.currency != nil && item.saleRateNB != nil && item.purchaseRateNB != nil
+            })
+            self.arrCurrencyPB = Currency.exchangeRate.filter({ item -> Bool in
+                item.baseCurrency != nil && item.currency != nil && item.saleRateNB != nil && item.purchaseRateNB != nil && item.saleRate != nil && item.purchaseRate != nil
+            })
+            self.queueMain.async {
+                self.datePB.text = self.arrList[0].date
+                self.dateNB.text = self.arrList[0].date
+                self.tablePB.reloadData()
+                self.tableNB.reloadData()
+            }
+        }
+    }
+    
+    func dateAlert() {
+        let alert = UIAlertController(title: "Выберите дату", message: "\n\n\n\n\n\n", preferredStyle: .actionSheet)
+        alert.isModalInPopover = true
+        self.datePicker.datePickerMode = .date
+        let localID = Locale.preferredLanguages.first
+        self.datePicker.locale = Locale(identifier: localID!)
+        alert.view.addSubview(self.datePicker)
+        alert.addAction(UIAlertAction(title: "Отменить", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: "Подтвердить", style: .default, handler: { (UIAlertAction) in
+            self.getDateFromDatePicker()
+        }))
+        self.present(alert,animated: true, completion: nil )
+    }
+    
+    func getDateFromDatePicker() {
+        self.formater.dateFormat = "dd.MM.yyyy"
+        self.dateToday = formater.string(from: datePicker.date)
+        getAPPI()
+    }
+    
+    func formatToString<T>(anotherType: T) -> String {
+        let s = String(format: "%.2f", anotherType as! CVarArg)
+        return s
+    }
     
 }
-
-
-
